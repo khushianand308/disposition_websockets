@@ -1,15 +1,16 @@
-# 📞 Disposition Extraction API - Production (Websockets)
+# 📞 Disposition Extraction API - Version 2.0 (Production)
 
 A high-performance production package for extracting structured **Call Dispositions**, **Payment Intent**, and **Reason for Not Paying** from conversational transcripts.
 
 ![Status](https://img.shields.io/badge/Status-Production-success)
+![Version](https://img.shields.io/badge/Version-2.0.0-green)
 ![Model](https://img.shields.io/badge/Model-Qwen%202.5%207B%20(4--bit)-blue)
 ![Stack](https://img.shields.io/badge/Stack-Unsloth%20%7C%20FastAPI-blueviolet)
 
 ---
 
-## 📁 Repository Structure
-This repository contains the optimized, clean production assets for the project:
+## 📁 Project Structure
+This repository contains the optimized, clean production assets:
 
 ```
 disposition_websockets/
