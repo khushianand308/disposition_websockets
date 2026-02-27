@@ -1,6 +1,6 @@
-# 📞 Disposition Extraction API v7.2 (Production Ready)
+# 📞 Disposition Extraction API - Production (Websockets)
 
-A high-performance multilingual AI pipeline for extracting structured **Call Dispositions**, **Payment Intent**, **Reason for Not Paying**, and **Performance Entities (Date/Amount)** from conversational transcripts.
+A high-performance production package for extracting structured **Call Dispositions**, **Payment Intent**, and **Reason for Not Paying** from conversational transcripts.
 
 ![Status](https://img.shields.io/badge/Status-Production-success)
 ![Model](https://img.shields.io/badge/Model-Qwen%202.5%207B%20(4--bit)-blue)
@@ -8,49 +8,45 @@ A high-performance multilingual AI pipeline for extracting structured **Call Dis
 
 ---
 
-## �️ Prerequisites & Hardware
-To run this model with acceptable latency, the following is required:
+## 📁 Repository Structure
+This repository contains the optimized, clean production assets for the project:
 
-*   **GPU:** Minimum **15GB VRAM** (e.g., NVIDIA Tesla T4, A10G, or A100).
-*   **VRAM Usage:** ~14.1 GB (Loaded in 4-bit quantization).
-*   **Memory:** 16GB+ RAM.
-*   **Python:** 3.10+
-*   **CUDA:** 12.1+ installed.
+```
+disposition_websockets/
+├── api/                            # core service implementation
+│   ├── app.py                      # FastAPI server
+│   ├── inference.py                # inference engine (Unsloth)
+│   └── static/                     # web UI dashboard
+├── app.py                          # root wrapper
+├── requirements.txt                # production dependencies
+├── disposition_api.service         # systemd unit file
+└── PRODUCTION_HANDOVER_v1.md      # detailed deployment guide
+```
 
 ---
 
-## ⚙️ Installation
+## 🛠️ Hardware Requirements
+*   **GPU:** Minimum **15GB VRAM** (Tesla T4, A10, A30, or A100).
+*   **VRAM Usage:** ~14.1 GB.
+*   **Memory:** 16GB+ System RAM.
 
+---
+
+## ⚙️ Installation & Running
+
+### 1. Simple manual start
 ```bash
-# 1. Clone the repository
-git clone https://github.com/khushianand01/agent_disposition_model.git
-cd agent_disposition_model
-
-# 2. Setup Virtual Environment
 python3 -m venv venv
 source venv/bin/activate
-
-# 3. Install Dependencies
 pip install -r requirements.txt
+python3 app.py
 ```
+*   **Dashboard**: `http://localhost:8005`
+*   **Health**: `http://localhost:8005/health`
 
----
-
-## 🚀 Running the API
-
-### Method 1: Web UI & Manual Run
+### 2. Production Service (systemd)
 ```bash
-venv/bin/python3 app.py
-```
-*   **Web Interface**: Access the interactive dashboard at `http://localhost:8005`
-*   **API Docs**: Swagger UI available at `http://localhost:8005/docs`
-
-### Method 2: Systemd Service (Recommended for Production)
-```bash
-# 1. Copy the service file
 sudo cp disposition_api.service /etc/systemd/system/
-
-# 2. Start the service
 sudo systemctl daemon-reload
 sudo systemctl enable disposition_api
 sudo systemctl start disposition_api
@@ -58,46 +54,21 @@ sudo systemctl start disposition_api
 
 ---
 
-## 📊 Performance Benchmarks (Tesla T4)
-Measured on the latest codebase with multithreaded stress testing:
-
-| User Scenario | Response Time (Median) | Reliability |
+## 📊 Deployment Benchmarks
+| Single User | 3 Concurrent Users | 5 Concurrent Users |
 | :--- | :--- | :--- |
-| **1 Single User** | **~4.5 seconds** | 100% |
-| **3 Concurrent Users** | ~12.5 seconds | 100% |
-| **5 Concurrent Users** | ~22.2 seconds | 100% |
+| **~4.5s Latency** | ~12.5s Latency | ~22.2s Latency |
 
-**Concurrency Logic**: The system uses a `threading.Lock()` to prevent GPU memory crashes. Parallel requests are queued and processed sequentially to ensure stability.
+*Note: The API handles parallel requests by queuing them safely to prevent GPU OOM crashes.*
 
 ---
 
-## 🌐 Multilingual & Intent Logic
-The model supports high-accuracy extraction for:
-- **Languages**: Hindi, English, Bengali, Marathi, Telugu, Tamil, Gujarati, Kannada, Malayalam, Punjabi.
-- **Job Loss Recovery**: Automatically maps "I lost my job" or "no work" to `JOB_CHANGED_WAITING_FOR_SALARY`.
-- **Dynamic Dates**: Uses the server's real-time date to resolve relative terms like *"parso"* (day after tomorrow) into valid `YYYY-MM-DD` strings.
+## 🌐 Intent Extraction Logic
+- **Job Loss**: Maps intents to `JOB_CHANGED_WAITING_FOR_SALARY`.
+- **Date Handling**: Resolves relative terms (*kal, parso*) into standard `YYYY-MM-DD` using the server's real-time clock.
+- **Multilingual**: High accuracy across Hindi, Bengali, English, Marathi, Tamil, Telugu, and more.
 
 ---
 
-## 🔍 API Usage
-
-### Extraction Endpoint
-```bash
-curl -X POST http://localhost:8005/predict \
-  -H "Content-Type: application/json" \
-  -d '{
-    "transcript": "Hello, main parso 5000 pay kar dunga.",
-    "current_date": "2026-02-27"
-  }'
-```
-
-### Metrics & Monitoring
-- **Prometheus Metrics**: `http://localhost:8005/metrics`
-- **Health Check**: `http://localhost:8005/health`
-
----
-
-## � Maintainer & Support
-- **Version**: 7.2 (Stable Handover)
-- **Primary Repo**: [agent_disposition_model](https://github.com/khushianand01/agent_disposition_model)
-- **Production Sync**: [disposition_websockets](https://github.com/khushianand308/disposition_websockets)
+## 📑 Support & Documentation
+For a full breakdown of the accuracy metrics, see: [PRODUCTION_HANDOVER_v1.md](./PRODUCTION_HANDOVER_v1.md)
