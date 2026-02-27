@@ -65,9 +65,15 @@ sudo systemctl start disposition_api
 
 ## 📮 API Testing (Postman)
 *   **REST (POST)**: `http://65.0.97.13:8005/predict`
-    *   Body: `raw/JSON` -> `{"transcript": "hello, will pay 5000"}`
+    *   Body: `raw/JSON` -> `{"transcript": "Agent: hello, Borrower: will pay 5000 next monday"}`
 *   **WebSocket**: `ws://65.0.97.13:8005/ws`
-    *   Message: `{"transcript": "i lost my job"}`
+    *   Message: `{"transcript": "Agent: hello, Borrower: i lost my job i cannot pay"}`
+
+---
+
+## 📝 Recommended Transcript Format
+For maximum accuracy, provide the transcript as a conversation:  
+`Agent: [Question/Statement] Borrower: [Customer Response]`
 
 ---
 
