@@ -51,6 +51,33 @@ These files are required for the API to run in the production environment.
 
 ---
 
+## 📮 Postman Testing
+
+### 1. REST API
+- **Method**: `POST`
+- **URL**: `http://65.0.97.13:8005/predict`
+- **Body**: Select `raw` and `JSON`.
+- **Payload**:
+  ```json
+  {
+    "transcript": "Hello, I will pay 5000 on Monday.",
+    "current_date": "2026-02-27"
+  }
+  ```
+
+### 2. WebSocket
+- **Request Type**: Select **WebSocket** in Postman.
+- **URL**: `ws://65.0.97.13:8005/ws`
+- **Message (JSON)**:
+  ```json
+  {
+    "transcript": "My job is lost, I cannot pay the EMI."
+  }
+  ```
+- **Action**: Click "Connect" then "Send".
+
+---
+
 ## 📉 Performance Summary (v2)
 - **Real-time Interface**: Persistent WebSocket connection available for low-overhead inference.
 - **Accuracy**: High precision on intent extraction across 10 regional languages.

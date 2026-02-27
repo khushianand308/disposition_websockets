@@ -63,6 +63,14 @@ sudo systemctl start disposition_api
 
 ---
 
+## 📮 API Testing (Postman)
+*   **REST (POST)**: `http://65.0.97.13:8005/predict`
+    *   Body: `raw/JSON` -> `{"transcript": "hello, will pay 5000"}`
+*   **WebSocket**: `ws://65.0.97.13:8005/ws`
+    *   Message: `{"transcript": "i lost my job"}`
+
+---
+
 ## 📊 Deployment Benchmarks
 | Single User | 3 Concurrent Users | 5 Concurrent Users |
 | :--- | :--- | :--- |
