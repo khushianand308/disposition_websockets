@@ -45,16 +45,18 @@ These files are required for the API to run in the production environment.
 
 3. **Validation**:
    The API will listen on **Port 8005**. 
-   ```bash
-   curl -s http://localhost:8005/health
-   ```
+   - **REST**: `http://localhost:8005/predict`
+   - **Websocket**: `ws://localhost:8005/ws`
+   - **Health**: `curl -s http://localhost:8005/health`
 
 ---
 
-## 📈 Final Benchmarks Summary
-- **JSON Validity**: 100% (No parsing failures).
-- **GPU Usage**: ~14.1 GB VRAM.
-- **Locking Logic**: A threading lock is enabled to prevent concurrent GPU access, ensuring stability during peak load.
+## 📉 Performance Summary (v2)
+- **Real-time Interface**: Persistent WebSocket connection available for low-overhead inference.
+- **Accuracy**: High precision on intent extraction across 10 regional languages.
+- **Benchmarks (Tesla T4)**: 
+  - 1 User: ~4.5s
+  - 5 Users: ~22.2s (queued)
 
 ---
 **Handover Date**: 2026-02-27  

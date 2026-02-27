@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, File, UploadFile, Form
+from fastapi import FastAPI, HTTPException, File, UploadFile, Form, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -203,6 +203,42 @@ def predict_disposition(request: TranscriptRequest):
 def metrics():
     resp = generate_latest()
     return HTMLResponse(content=resp, status_code=200, media_type=CONTENT_TYPE_LATEST)
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    print("WebSocket connection established")
+    try:
+        while True:
+            data = await websocket.receive_json()
+            transcript = data.get("transcript", "")
+            current_date = data.get("current_date") or str(date.today())
+            
+            if not transcript.strip():
+                await websocket.send_json({"error": "Transcript is empty"})
+                continue
+
+            REQUEST_COUNT.inc()
+            try:
+                with INFERENCE_TIME.time():
+                    # model.predict is synchronous and handles its own threading lock
+                    result = model.predict(transcript, current_date=current_date)
+                
+                if isinstance(result, dict) and "error" in result:
+                    REQUEST_ERRORS.inc()
+                    await websocket.send_json({"error": "Model failed to generate valid JSON", "details": result["error"]})
+                else:
+                    await websocket.send_json(result)
+            except Exception as e:
+                REQUEST_ERRORS.inc()
+                print(f"ERROR in WebSocket predict: {str(e)}")
+                await websocket.send_json({"error": str(e)})
+
+    except WebSocketDisconnect:
+        print("WebSocket client disconnected")
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+        traceback.print_exc()
 
 if __name__ == "__main__":
     import uvicorn

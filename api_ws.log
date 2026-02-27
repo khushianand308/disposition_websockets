@@ -1,0 +1,37 @@
+nohup: ignoring input
+🦥 Unsloth: Will patch your computer to enable 2x faster free finetuning.
+🦥 Unsloth Zoo will now patch everything to make training faster!
+Loading model for API...
+Loading model from khushianand01/disposition_model...
+Using device: cuda
+==((====))==  Unsloth 2026.2.1: Fast Qwen2 patching. Transformers: 4.57.6.
+   \\   /|    Tesla T4. Num GPUs = 1. Max memory: 14.581 GB. Platform: Linux.
+O^O/ \_/ \    Torch: 2.10.0+cu128. CUDA: 7.5. CUDA Toolkit: 12.8. Triton: 3.6.0
+\        /    Bfloat16 = FALSE. FA [Xformers = 0.0.34. FA2 = False]
+ "-____-"     Free license: http://github.com/unslothai/unsloth
+Unsloth: Fast downloading is enabled - ignore downloading bars which are red colored!
+Unsloth 2026.2.1 patched 28 layers with 28 QKV layers, 28 O layers and 28 MLP layers.
+Model loaded successfully.
+INFO:     Started server process [23645]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8005 (Press CTRL+C to quit)
+INFO:     127.0.0.1:46860 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34538 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+WebSocket connection established
+WebSocket client disconnected
+INFO:     127.0.0.1:34550 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44788 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35856 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51354 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43698 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48544 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     connection closed
+WebSocket connection established
+WebSocket client disconnected
+INFO:     127.0.0.1:51546 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59966 - "GET /metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46098 - "GET /metrics HTTP/1.1" 200 OK

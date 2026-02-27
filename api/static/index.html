@@ -267,6 +267,83 @@
             border-radius: 8px;
             text-align: center;
         }
+
+        /* Toggle Switch Styling */
+        .switch-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: #fdf2ff;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: var(--primary);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(24px);
+        }
+
+        .ws-status {
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            display: none;
+        }
+
+        .status-connected {
+            background: #dcfce7;
+            color: #166534;
+            display: inline-block;
+        }
+
+        .status-disconnected {
+            background: #fee2e2;
+            color: #991b1b;
+            display: inline-block;
+        }
     </style>
 </head>
 
@@ -281,6 +358,19 @@
             <div class="grid-layout">
                 <!-- Left Column: Single Predict -->
                 <div class="column-box" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="switch-container">
+                        <label class="switch" style="margin-bottom: 0;">
+                            <input type="checkbox" id="ws-toggle">
+                            <span class="slider"></span>
+                        </label>
+                        <div style="flex-grow: 1;">
+                            <span style="font-weight: 600; font-size: 0.95rem;">Websocket Mode</span>
+                            <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Real-time persistent
+                                connection</p>
+                        </div>
+                        <span id="ws-status" class="ws-status">Disconnected</span>
+                    </div>
+
                     <div class="form-group" style="margin-bottom: 0;">
                         <label for="transcript" style="font-size: 1.05rem; margin-bottom: 0.75rem;">Single Transcript
                             Extraction</label>
@@ -387,6 +477,72 @@
         const outputFormatSelect = document.getElementById('output-format');
         const uploadSpinner = document.getElementById('upload-spinner');
 
+        const wsToggle = document.getElementById('ws-toggle');
+        const wsStatus = document.getElementById('ws-status');
+
+        let socket = null;
+
+        function updateWsStatus(status) {
+            wsStatus.className = 'ws-status';
+            if (status === 'connected') {
+                wsStatus.textContent = 'Connected';
+                wsStatus.classList.add('status-connected');
+            } else if (status === 'connecting') {
+                wsStatus.textContent = 'Connecting...';
+                wsStatus.classList.add('status-disconnected'); // using red for not ready
+            } else {
+                wsStatus.textContent = 'Disconnected';
+                wsStatus.classList.add('status-disconnected');
+            }
+        }
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+            updateWsStatus('connecting');
+            socket = new WebSocket(wsUrl);
+
+            socket.onopen = () => {
+                console.log('WebSocket connected');
+                updateWsStatus('connected');
+            };
+
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                resultContent.textContent = JSON.stringify(data, null, 2);
+                resultBox.style.display = 'block';
+                loadingSpinner.style.display = 'none';
+            };
+
+            socket.onclose = () => {
+                console.log('WebSocket disconnected');
+                updateWsStatus('disconnected');
+                if (wsToggle.checked) {
+                    // Auto-reconnect if toggle is still on
+                    setTimeout(connectWebSocket, 3000);
+                }
+            };
+
+            socket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                updateWsStatus('disconnected');
+            };
+        }
+
+        wsToggle.addEventListener('change', () => {
+            if (wsToggle.checked) {
+                connectWebSocket();
+                wsStatus.style.display = 'inline-block';
+            } else {
+                if (socket) {
+                    socket.close();
+                    socket = null;
+                }
+                wsStatus.style.display = 'none';
+            }
+        });
+
         // Single transcript prediction
         predictBtn.addEventListener('click', async () => {
             const transcript = transcriptInput.value.trim();
@@ -398,23 +554,29 @@
             loadingSpinner.style.display = 'block';
             resultBox.style.display = 'none';
 
-            try {
-                const response = await fetch('/predict', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ transcript })
-                });
+            if (wsToggle.checked && socket && socket.readyState === WebSocket.OPEN) {
+                // Use WebSocket
+                socket.send(JSON.stringify({ transcript }));
+            } else {
+                // Fallback to REST
+                try {
+                    const response = await fetch('/predict', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ transcript })
+                    });
 
-                const data = await response.json();
-                resultContent.textContent = JSON.stringify(data, null, 2);
-                resultBox.style.display = 'block';
-            } catch (error) {
-                alert('Error connecting to API.');
-                console.error(error);
-            } finally {
-                loadingSpinner.style.display = 'none';
+                    const data = await response.json();
+                    resultContent.textContent = JSON.stringify(data, null, 2);
+                    resultBox.style.display = 'block';
+                } catch (error) {
+                    alert('Error connecting to API.');
+                    console.error(error);
+                } finally {
+                    loadingSpinner.style.display = 'none';
+                }
             }
         });
 
