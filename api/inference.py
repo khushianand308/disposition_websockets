@@ -80,11 +80,15 @@ class DispositionModel:
             "2. Transcript: 'Haan main parso 5000 jama kar dunga.' Current Date: 2026-01-27\n"
             "   Output: {\"disposition\": \"ANSWERED\", \"payment_disposition\": \"PTP\", \"reason_for_not_paying\": \"FUNDS_ISSUE\", \"ptp_details\": {\"amount\": 5000, \"date\": \"2026-01-29\"}, \"remarks\": \"will pay day after tomorrow\", \"confidence_score\": 0.95}\n"
             "\n"
-            "3. Transcript: 'My job is lost, I cannot pay the EMI.'\n"
+            "3. Transcript: 'Aap kisi ko ghar bhej do, main cash de dunga.'\n"
+            "   Output: {\"disposition\": \"ANSWERED\", \"payment_disposition\": \"WILL_PAY_AFTER_VISIT\", \"reason_for_not_paying\": \"OTHER_REASONS\", \"ptp_details\": {\"amount\": null, \"date\": null}, \"remarks\": \"requested home visit for cash payment\", \"confidence_score\": 0.97}\n"
+            "\n"
+            "4. Transcript: 'My job is lost, I cannot pay the EMI.'\n"
             "   Output: {\"disposition\": \"ANSWERED\", \"payment_disposition\": \"DENIED_TO_PAY\", \"reason_for_not_paying\": \"JOB_CHANGED_WAITING_FOR_SALARY\", \"ptp_details\": {\"amount\": null, \"date\": null}, \"remarks\": \"lost job, refused to pay\", \"confidence_score\": 0.99}\n"
             "\n"
             "RULES:\n"
-            "- A 'PTP' (Promise to Pay) occurs when a customer commits to pay a specific amount on a specific date.\n"
+            "- A 'PTP' (Promise to Pay) occurs when a customer commits to pay on a specific date (e.g., 'Monday pay', 'parso dunga'). This is the default for most payment commitments.\n"
+            "- 'WILL_PAY_AFTER_VISIT' must ONLY be used if the customer explicitly requests a home visit, cash pickup, or mentions a collector coming home (e.g., 'Ghar aao', 'collector ko bhejo').\n"
             "- If the customer is vague (e.g., 'I will try'), use 'NO_PAYMENT_COMMITMENT'.\n"
             "- If the customer explicitly refuses or states inability to pay (e.g., job loss, lack of funds), use 'DENIED_TO_PAY' and the appropriate reason ('JOB_CHANGED_WAITING_FOR_SALARY', 'FUNDS_ISSUE').\n"
             "- DATE CALCULATION: 'Kal' = Tomorrow (Today + 1), 'Parso' = Day After Tomorrow (Today + 2). February has 28 days.\n"
@@ -142,6 +146,19 @@ Transcript: {transcript}
             elif "PROMISE" in p_disp or "PTP" in p_disp: result["payment_disposition"] = "PTP"
             elif "REFUSE" in p_disp or "DENY" in p_disp: result["payment_disposition"] = "DENIED_TO_PAY"
             else: result["payment_disposition"] = "None"
+        elif p_disp == "WILL_PAY_AFTER_VISIT":
+            # Safety Heuristic: Ensure visit keywords are present
+            visit_keywords = ["ghar", "home", "visit", "bhej", "collector", "pickup", "pick up", "address", "location", "dikkat", "call cut", "milne"]
+            lower_t = transcript.lower()
+            if not any(kw in lower_t for kw in visit_keywords):
+                # If it's a commitment with date/amount but no visit keyword, it's likely a PTP
+                # We check for presence of amt/date in the raw result before cleanup
+                ptp_candidate = result.get("ptp_details", {})
+                if (ptp_candidate.get("amount") or ptp_candidate.get("date")) and "pay" in lower_t:
+                    result["payment_disposition"] = "PTP"
+                else:
+                    # If no commitment details, it might just be the model hallucinating the label
+                    result["payment_disposition"] = "PTP" # Safer default if it predicted a payment intent
         else:
             result["payment_disposition"] = p_disp
 
