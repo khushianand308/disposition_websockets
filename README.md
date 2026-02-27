@@ -1,56 +1,61 @@
-# 📞 Agent Disposition Model v7.2 (Production Ready)
+# 📞 Disposition Extraction API - Version 2.0 (Production)
 
-A high-performance multilingual AI pipeline for extracting structured **Call Dispositions**, **Payment Intent**, **Reason for Not Paying**, and **Performance Entities (Date/Amount)** from conversational transcripts.
+A high-performance production package for extracting structured **Call Dispositions**, **Payment Intent**, and **Reason for Not Paying** from conversational transcripts.
 
 ![Status](https://img.shields.io/badge/Status-Production-success)
+![Version](https://img.shields.io/badge/Version-2.0.0-green)
 ![Model](https://img.shields.io/badge/Model-Qwen%202.5%207B%20(4--bit)-blue)
 ![Stack](https://img.shields.io/badge/Stack-Unsloth%20%7C%20FastAPI-blueviolet)
 
 ---
 
-## 🛠️ Prerequisites & Hardware
-To run this model with acceptable latency, the following is required:
+## 📁 Project Structure
+This repository contains the optimized, clean production assets:
 
-*   **GPU:** Minimum **15GB VRAM** (e.g., NVIDIA Tesla T4, A10G, or A100).
-*   **VRAM Usage:** ~14.1 GB (Loaded in 4-bit quantization).
-*   **Memory:** 16GB+ RAM.
-*   **Python:** 3.10+
-*   **CUDA:** 12.1+ installed.
+```
+disposition_websockets/
+├── api/                            # core service implementation
+│   ├── app.py                      # FastAPI server
+│   ├── inference.py                # inference engine (Unsloth)
+│   └── static/                     # web UI dashboard
+├── app.py                          # root wrapper
+├── requirements.txt                # production dependencies
+├── disposition_api.service         # systemd unit file
+└── PRODUCTION_HANDOVER_v2.md      # detailed deployment guide
+```
 
 ---
 
-## ⚙️ Installation
+## 🛠️ Hardware Requirements
+*   **GPU:** Minimum **15GB VRAM** (Tesla T4, A10, A30, or A100).
+*   **VRAM Usage:** ~14.1 GB.
+*   **Memory:** 16GB+ System RAM.
 
+---
+
+## ⚙️ Installation & Running
+
+### 1. Simple manual start
 ```bash
-# 1. Clone the repository
-git clone https://github.com/khushianand01/agent_disposition_model.git
-cd agent_disposition_model
+# 1. Clone & Enter
+git clone https://github.com/khushianand308/disposition_websockets.git
+cd disposition_websockets
 
-# 2. Setup Virtual Environment
+# 2. Setup
 python3 -m venv venv
 source venv/bin/activate
-
-# 3. Install Dependencies
 pip install -r requirements.txt
+
+# 3. Launch
+python3 app.py
 ```
+*   **Dashboard**: `http://localhost:8005`
+*   **Health**: `http://localhost:8005/health`
 
----
-
-## 🚀 Running the API
-
-### Method 1: Web UI & Manual Run
+### 2. Production Service (systemd)
 ```bash
-venv/bin/python3 app.py
-```
-*   **Web Interface**: Access the interactive dashboard at `http://localhost:8005`
-*   **API Docs**: Swagger UI available at `http://localhost:8005/docs`
-
-### Method 2: Systemd Service (Recommended for Production)
-```bash
-# 1. Copy the service file
+# Update the path in the .service file if your folder is not /home/ubuntu/
 sudo cp disposition_api.service /etc/systemd/system/
-
-# 2. Start the service
 sudo systemctl daemon-reload
 sudo systemctl enable disposition_api
 sudo systemctl start disposition_api
@@ -58,42 +63,21 @@ sudo systemctl start disposition_api
 
 ---
 
-## � Project Structure
-
-```
-agent_disposition_model/
-├── api/                            # 🚀 Production Service
-│   ├── app.py                      #    FastAPI Server (Port 8005)
-│   ├── inference.py                #    Unsloth Inference Engine
-│   └── static/index.html           #    Web UI
-├── data/                           # 📊 Datasets (Optional)
-├── docs/                           # 📑 Reports & Notes
-├── eval_datasets/                  # 🧪 Test Sets
-├── logs/                           # 📝 API & Eval Logs
-├── requirements.txt                # Python dependencies
-├── disposition_api.service         # Systemd unit
-└── README.md                       # Project documentation
-```
-
----
-
-## 📊 Performance Benchmarks (Tesla T4)
-| User Scenario | Response Time (Median) | Reliability |
+## 📊 Deployment Benchmarks
+| Single User | 3 Concurrent Users | 5 Concurrent Users |
 | :--- | :--- | :--- |
-| **1 Single User** | **~4.5 seconds** | 100% |
-| **3 Concurrent Users** | ~12.5 seconds | 100% |
-| **5 Concurrent Users** | ~22.2 seconds | 100% |
+| **~4.5s Latency** | ~12.5s Latency | ~22.2s Latency |
+
+*Note: The API handles parallel requests by queuing them safely to prevent GPU OOM crashes.*
 
 ---
 
 ## 🌐 Intent Extraction Logic
-- **Job Loss**: Maps intents to `JOB_CHANGED_WAITING_FOR_SALARY`.
-- **Date Handling**: Resolves relative terms (*kal, parso*) into standard `YYYY-MM-DD` using the server's real-time clock.
-- **Multilingual**: High accuracy across Hindi, Bengali, English, Marathi, Tamil, Telugu, and more.
+- **Job Loss Mapping**: Automatically maps "I lost my job" or "no work" to `JOB_CHANGED_WAITING_FOR_SALARY`.
+- **Dynamic Dates**: Resolves relative terms (*kal, parso*) into standard `YYYY-MM-DD` using the server's real-time clock.
+- **Multilingual Support**: Supports Hindi, Bengali, English, Marathi, Tamil, Telugu, Gujarati, Kannada, Malayalam, and Punjabi.
 
 ---
 
-## 📑 Maintainer & Support
-- **Version**: 7.2 (Stable Handover)
-- **Primary Repo**: [agent_disposition_model](https://github.com/khushianand01/agent_disposition_model)
-- **Production Sync**: [disposition_websockets](https://github.com/khushianand308/disposition_websockets)
+## 📑 Support & Documentation
+For a full breakdown of the accuracy metrics and deployment details, see: [PRODUCTION_HANDOVER_v2.md](./PRODUCTION_HANDOVER_v2.md)
