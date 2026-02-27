@@ -78,6 +78,17 @@ These files are required for the API to run in the production environment.
 
 ---
 
+## 📝 Recommended Transcript Format
+For maximum accuracy, the transcript should be formatted as a dialogue:
+- **Preferred Labels**: `Agent` and `Borrower` (or `Customer`).
+- **Example**:
+  ```text
+  Agent: Hello, your EMI is pending.
+  Borrower: I will pay 5000 next Monday.
+  ```
+
+---
+
 ## 📉 Performance Summary (v2)
 - **Real-time Interface**: Persistent WebSocket connection available for low-overhead inference.
 - **Accuracy**: High precision on intent extraction across 10 regional languages.
