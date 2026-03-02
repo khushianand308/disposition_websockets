@@ -74,8 +74,11 @@ class DispositionModel:
             "- reason_for_not_paying: FUNDS_ISSUE, TECHNICAL_ISSUE, JOB_CHANGED_WAITING_FOR_SALARY, RATE_OF_INTEREST_ISSUES, SALARY_NOT_CREDITED, SERVICE_ISSUE, CUSTOMER_NOT_TELLING_REASON, OTHER_REASONS, None\n"
             "\n"
             "EXAMPLES:\n"
-            "1. Transcript: 'Hello? Haan Mamata ji ke devar bol raha hoon. Wo ghar pe nahi hain.'\n"
-            "   Output: {\"disposition\": \"ANSWERED_BY_FAMILY_MEMBER\", \"payment_disposition\": null, \"reason_for_not_paying\": null, \"ptp_details\": {\"amount\": null, \"date\": null}, \"remarks\": \"talked to brother-in-law\", \"confidence_score\": 0.98}\n"
+            "1. Transcript: 'Agent: Vikas ji se baat ho rahi hai? Customer: Nahi, main unka beta bol raha hoon. Woh abhi ghar par nahi hain.'\n"
+            "   Output: {\"disposition\": \"ANSWERED_BY_FAMILY_MEMBER\", \"payment_disposition\": null, \"reason_for_not_paying\": null, \"ptp_details\": {\"amount\": null, \"date\": null}, \"remarks\": \"talked to son, borrower not home\", \"confidence_score\": 0.98}\n"
+            "\n"
+            "1b. Transcript: 'Agent: Sunita ji? Customer: Woh ghar pe nahi hain, main unka pati bol raha hoon.'\n"
+            "   Output: {\"disposition\": \"ANSWERED_BY_FAMILY_MEMBER\", \"payment_disposition\": null, \"reason_for_not_paying\": null, \"ptp_details\": {\"amount\": null, \"date\": null}, \"remarks\": \"talked to husband\", \"confidence_score\": 0.97}\n"
             "\n"
             "2. Transcript: 'Haan main parso 5000 jama kar dunga.' Current Date: 2026-01-27\n"
             "   Output: {\"disposition\": \"ANSWERED\", \"payment_disposition\": \"PTP\", \"reason_for_not_paying\": \"FUNDS_ISSUE\", \"ptp_details\": {\"amount\": 5000, \"date\": \"2026-01-29\"}, \"remarks\": \"will pay day after tomorrow\", \"confidence_score\": 0.95}\n"
@@ -95,6 +98,7 @@ class DispositionModel:
             "- If the customer is vague (e.g., 'I will try'), use 'NO_PAYMENT_COMMITMENT'.\n"
             "- If the customer explicitly refuses or states inability to pay (e.g., job loss, lack of funds), use 'DENIED_TO_PAY' and the appropriate reason ('JOB_CHANGED_WAITING_FOR_SALARY', 'FUNDS_ISSUE').\n"
             "- DATE CALCULATION: 'Kal' = Tomorrow (Today + 1), 'Parso' = Day After Tomorrow (Today + 2). February has 28 days.\n"
+            "- If a FAMILY MEMBER (son, daughter, wife, husband, bhai, beti, beta, pati, patni, devar, bhabhi) answers and the actual borrower is absent, use EXACTLY 'ANSWERED_BY_FAMILY_MEMBER' as the disposition.\n"
             "- confidence_score should be between 0.0 and 1.0 based on how clear the transcript is.\n"
             "- Return ONLY valid JSON."
         )
@@ -130,13 +134,23 @@ Transcript: {transcript}
 
         # 1. FUZZY Label Mapping (Don't be too strict)
         disp = str(result.get("disposition", "OTHERS")).upper().replace(" ", "_")
-        if disp not in call_labels:
-            if "FAMILY" in disp: result["disposition"] = "ANSWERED_BY_FAMILY_MEMBER"
+
+        # Pre-check transcript for family member keywords (more reliable than model label)
+        family_keywords = ["beta", "beti", "pati", "patni", "bhai", "bhabhi", "devar", "son", "daughter",
+                           "wife", "husband", "brother", "sister", "ghar pe nahi", "ghar par nahi",
+                           "abhi nahi hain", "at home nahi", "not at home", "nahi hain", "ghar mein nahi"]
+        lower_t = transcript.lower()
+        agent_asking_for_borrower = any(kw in lower_t for kw in ["se baat", "se baat ho", "bol raha hoon", "bol rahi hoon", "speaking"])
+        family_answered = any(kw in lower_t for kw in family_keywords)
+
+        if family_answered and agent_asking_for_borrower:
+            result["disposition"] = "ANSWERED_BY_FAMILY_MEMBER"
+        elif disp not in call_labels:
+            if "FAMILY" in disp or "MEMBER" in disp: result["disposition"] = "ANSWERED_BY_FAMILY_MEMBER"
             elif "BUSY" in disp: result["disposition"] = "BUSY"
             elif "WRONG" in disp: result["disposition"] = "WRONG_NUMBER"
             elif "ANSWER" in disp: result["disposition"] = "ANSWERED"
             elif len(disp) > 2 and disp.replace("_", "").isalnum():
-                # If it looks like a valid label, let it through
                 result["disposition"] = disp
             else:
                 result["disposition"] = "OTHERS"
