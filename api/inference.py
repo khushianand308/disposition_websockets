@@ -143,7 +143,17 @@ Transcript: {transcript}
         agent_asking_for_borrower = any(kw in lower_t for kw in ["se baat", "se baat ho", "bol raha hoon", "bol rahi hoon", "speaking"])
         family_answered = any(kw in lower_t for kw in family_keywords)
 
-        if family_answered and agent_asking_for_borrower:
+        # 1.5 System Message Heuristics (Very Reliable)
+        if any(kw in lower_t for kw in ["switched off", "switch off", "out of reach", "band aa raha", "switch-off", "nahi lag raha"]):
+            result["disposition"] = "SWITCHED_OFF"
+        elif any(kw in lower_t for kw in ["not reachable", "out of network", "network area", "kshetra se bahar"]):
+            result["disposition"] = "OUT_OF_NETWORK"
+        elif any(kw in lower_t for kw in ["busy", "another call", "vyast", "waiting"]):
+            result["disposition"] = "BUSY"
+        elif any(kw in lower_t for kw in ["ringing", "bell", "ghanti"]):
+            if "pick" not in lower_t and "hello" in lower_t:
+                result["disposition"] = "RINGING"
+        elif family_answered and agent_asking_for_borrower:
             result["disposition"] = "ANSWERED_BY_FAMILY_MEMBER"
         elif disp not in call_labels:
             if "FAMILY" in disp or "MEMBER" in disp: result["disposition"] = "ANSWERED_BY_FAMILY_MEMBER"
