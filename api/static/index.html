@@ -375,7 +375,13 @@
                         <label for="transcript" style="font-size: 1.05rem; margin-bottom: 0.75rem;">Single Transcript
                             Extraction</label>
                         <textarea id="transcript"
-                            placeholder="Paste a single call transcription here to test..."></textarea>
+                            placeholder="Paste a single call transcription here to test... or paste a JSON object to auto-fill."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="current-date">System Date (Simulates today's date for relative extraction)</label>
+                        <input type="date" id="current-date"
+                            style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 0.95rem; background: #f8fafc;">
                     </div>
 
                     <button id="predict-btn">
@@ -471,6 +477,28 @@
         const loadingSpinner = document.getElementById('loading-spinner');
         const resultBox = document.getElementById('result-box');
         const resultContent = document.getElementById('result-content');
+        const currentDateInput = document.getElementById('current-date');
+
+        // Set default date to today
+        currentDateInput.value = new Date().toISOString().split('T')[0];
+
+        // JSON Auto-detection
+        transcriptInput.addEventListener('input', () => {
+            const val = transcriptInput.value.trim();
+            if (val.startsWith('{') && val.endsWith('}')) {
+                try {
+                    const parsed = JSON.parse(val);
+                    if (parsed.transcript) {
+                        transcriptInput.value = parsed.transcript;
+                        if (parsed.current_date) {
+                            currentDateInput.value = parsed.current_date;
+                        }
+                    }
+                } catch (e) {
+                    // Not valid JSON or missing transcript field, ignore
+                }
+            }
+        });
 
         const uploadBtn = document.getElementById('upload-btn');
         const batchFileInput = document.getElementById('batch-file');
@@ -546,6 +574,8 @@
         // Single transcript prediction
         predictBtn.addEventListener('click', async () => {
             const transcript = transcriptInput.value.trim();
+            const currentDate = currentDateInput.value;
+
             if (!transcript) {
                 alert('Please enter a transcript.');
                 return;
@@ -556,7 +586,7 @@
 
             if (wsToggle.checked && socket && socket.readyState === WebSocket.OPEN) {
                 // Use WebSocket
-                socket.send(JSON.stringify({ transcript }));
+                socket.send(JSON.stringify({ transcript, current_date: currentDate }));
             } else {
                 // Fallback to REST
                 try {
@@ -565,7 +595,7 @@
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({ transcript })
+                        body: JSON.stringify({ transcript, current_date: currentDate })
                     });
 
                     const data = await response.json();

@@ -35,19 +35,26 @@ disposition_websockets/
 
 ## ⚙️ Installation & Running
 
-### 1. Simple manual start
+### 1. Manual Execution & Quick Controls
 ```bash
-# 1. Clone & Enter
-git clone https://github.com/khushianand308/disposition_websockets.git
-cd disposition_websockets
-
-# 2. Setup
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# 3. Launch
+# ----- START -----
+# Option A: Standard (Interactive)
 python3 app.py
+
+# Option B: Background (Recommended for manual server use)
+nohup venv/bin/python3 app.py > api_ws.log 2>&1 &
+
+# ----- STOP -----
+# Kill the process running on port 8005
+sudo fuser -k 8005/tcp
+
+# ----- RESTART -----
+# Kill and then start in background
+sudo fuser -k 8005/tcp && nohup venv/bin/python3 app.py > api_ws.log 2>&1 &
+
+# ----- MONITOR -----
+# Check real-time logs
+tail -f api_ws.log
 ```
 *   **Dashboard**: `http://localhost:8005`
 *   **Health**: `http://localhost:8005/health`
