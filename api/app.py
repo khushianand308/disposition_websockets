@@ -1,3 +1,9 @@
+import torch
+# Monkey-patch PyTorch 2.6 integer types to fix unsloth_zoo compatibility with PyTorch 2.5.1
+for i in range(1, 8):
+    if not hasattr(torch, f"int{i}"): setattr(torch, f"int{i}", torch.int8)
+    if not hasattr(torch, f"uint{i}"): setattr(torch, f"uint{i}", torch.uint8)
+
 from fastapi import FastAPI, HTTPException, File, UploadFile, Form, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles

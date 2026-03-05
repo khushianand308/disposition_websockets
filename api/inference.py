@@ -1,4 +1,9 @@
 import torch
+# Monkey-patch PyTorch 2.6 integer types to fix unsloth_zoo compatibility with PyTorch 2.5.1
+for i in range(1, 8):
+    if not hasattr(torch, f"int{i}"): setattr(torch, f"int{i}", torch.int8)
+    if not hasattr(torch, f"uint{i}"): setattr(torch, f"uint{i}", torch.uint8)
+
 from unsloth import FastLanguageModel
 from transformers import TextStreamer, StoppingCriteria, StoppingCriteriaList
 import json
@@ -71,7 +76,7 @@ class DispositionModel:
             "\n"
             "ALLOWED LABELS:\n"
             "- payment_disposition: PTP, PARTIAL_PAYMENT, PAID, DENIED_TO_PAY, WILL_PAY_AFTER_VISIT, WANTS_TO_RENEGOTIATE_LOAN_TERMS, SETTLEMENT, NO_PAYMENT_COMMITMENT, WANT_FORECLOSURE, None\n"
-            "- reason_for_not_paying: FUNDS_ISSUE, TECHNICAL_ISSUE, JOB_CHANGED_WAITING_FOR_SALARY, RATE_OF_INTEREST_ISSUES, SALARY_NOT_CREDITED, SERVICE_ISSUE, CUSTOMER_NOT_TELLING_REASON, OTHER_REASONS, None\n"
+            "- reason_for_not_paying: FUNDS_ISSUE, TECHNICAL_ISSUE, JOB_CHANGED_WAITING_FOR_SALARY, MEDICAL_ISSUE, RATE_OF_INTEREST_ISSUES, SALARY_NOT_CREDITED, SERVICE_ISSUE, CUSTOMER_NOT_TELLING_REASON, OTHER_REASONS, None\n"
             "\n"
             "EXAMPLES:\n"
             "1. Transcript: 'Agent: Vikas ji se baat ho rahi hai? Customer: Nahi, main unka beta bol raha hoon. Woh abhi ghar par nahi hain.'\n"
@@ -90,13 +95,22 @@ class DispositionModel:
             "   Output: {\"disposition\": \"ANSWERED\", \"payment_disposition\": \"DENIED_TO_PAY\", \"reason_for_not_paying\": \"JOB_CHANGED_WAITING_FOR_SALARY\", \"ptp_details\": {\"amount\": null, \"date\": null}, \"remarks\": \"lost job, refused to pay\", \"confidence_score\": 0.99}\n"
             "\n"
             "5. Transcript: 'Mere ghar mein medical emergency hai, abhi paise nahi de sakta.'\n"
-            "   Output: {\"disposition\": \"ANSWERED\", \"payment_disposition\": \"DENIED_TO_PAY\", \"reason_for_not_paying\": \"OTHER_REASONS\", \"ptp_details\": {\"amount\": null, \"date\": null}, \"remarks\": \"medical emergency in family\", \"confidence_score\": 0.96}\n"
+            "   Output: {\"disposition\": \"ANSWERED\", \"payment_disposition\": \"DENIED_TO_PAY\", \"reason_for_not_paying\": \"MEDICAL_ISSUE\", \"ptp_details\": {\"amount\": null, \"date\": null}, \"remarks\": \"medical emergency in family\", \"confidence_score\": 0.96}\n"
+            "\n"
+            "6. Transcript: 'ನನಗೆ ಕೆಲಸ ಹೋಗಿದೆ, ಈಗ ಹಣ ಕಟ್ಟಲು ಸಾಧ್ಯವಿಲ್ಲ' (Kannada: I lost my job, cannot pay now)\n"
+            "   Output: {\"disposition\": \"ANSWERED\", \"payment_disposition\": \"DENIED_TO_PAY\", \"reason_for_not_paying\": \"JOB_CHANGED_WAITING_FOR_SALARY\", \"ptp_details\": {\"amount\": null, \"date\": null}, \"remarks\": \"lost job in Kannada\", \"confidence_score\": 0.95}\n"
+            "\n"
+            "7. Transcript: 'വീട്ടിലേക്ക് ആളെ വിടൂ, ഞാൻ ക്യാഷ് ആയി തരാം' (Malayalam: Send someone home, I will give cash)\n"
+            "   Output: {\"disposition\": \"ANSWERED\", \"payment_disposition\": \"WILL_PAY_AFTER_VISIT\", \"reason_for_not_paying\": \"OTHER_REASONS\", \"ptp_details\": {\"amount\": null, \"date\": null}, \"remarks\": \"requested home visit in Malayalam\", \"confidence_score\": 0.94}\n"
+            "\n"
+            "8. Transcript: 'सध्या थोडी अडचण आहे. पुढच्या आठवड्यात देऊ शकतो.' (Marathi: Currently facing issues. Can give next week.)\n"
+            "   Output: {\"disposition\": \"ANSWERED\", \"payment_disposition\": \"PTP\", \"reason_for_not_paying\": \"OTHER_REASONS\", \"ptp_details\": {\"amount\": null, \"date\": \"Next Week\"}, \"remarks\": \"will pay next week\", \"confidence_score\": 0.95}\n"
             "\n"
             "RULES:\n"
             "- A 'PTP' (Promise to Pay) occurs when a customer commits to pay on a specific date (e.g., 'Monday pay', 'parso dunga'). This is the default for most payment commitments.\n"
             "- 'WILL_PAY_AFTER_VISIT' must ONLY be used if the customer explicitly requests a home visit, cash pickup, or mentions a collector coming home (e.g., 'Ghar aao', 'collector ko bhejo').\n"
             "- If the customer is vague (e.g., 'I will try'), use 'NO_PAYMENT_COMMITMENT'.\n"
-            "- If the customer explicitly refuses or states inability to pay (e.g., job loss, lack of funds), use 'DENIED_TO_PAY' and the appropriate reason ('JOB_CHANGED_WAITING_FOR_SALARY', 'FUNDS_ISSUE').\n"
+            "- If the customer explicitly refuses or states inability to pay (e.g., job loss, lack of funds, medical issue), use 'DENIED_TO_PAY' and the appropriate reason ('JOB_CHANGED_WAITING_FOR_SALARY', 'MEDICAL_ISSUE', 'FUNDS_ISSUE').\n"
             "- DATE CALCULATION: 'Kal' = Tomorrow (Today + 1), 'Parso' = Day After Tomorrow (Today + 2). February has 28 days.\n"
             "- If a FAMILY MEMBER (son, daughter, wife, husband, bhai, beti, beta, pati, patni, devar, bhabhi) answers and the actual borrower is absent, use EXACTLY 'ANSWERED_BY_FAMILY_MEMBER' as the disposition.\n"
             "- confidence_score should be between 0.0 and 1.0 based on how clear the transcript is.\n"
@@ -168,16 +182,28 @@ Transcript: {transcript}
             result["disposition"] = disp
 
         p_disp = str(result.get("payment_disposition", "None")).upper().replace(" ", "_")
-        if p_disp not in pay_labels:
+        paid_keywords = ["paid", "kattesa", "kattida", "kattivi", "adachu", "jama", "pay kar diya", "bhar diya", "done"]
+        if any(kw in lower_t for kw in paid_keywords) and "will" not in lower_t:
+            result["payment_disposition"] = "PAID"
+        elif p_disp not in pay_labels:
             if "CLAIM" in p_disp: result["payment_disposition"] = "PAID"
             elif "PROMISE" in p_disp or "PTP" in p_disp: result["payment_disposition"] = "PTP"
             elif "REFUSE" in p_disp or "DENY" in p_disp: result["payment_disposition"] = "DENIED_TO_PAY"
             else: result["payment_disposition"] = "None"
-        elif p_disp == "WILL_PAY_AFTER_VISIT":
-            # Safety Heuristic: Ensure visit keywords are present
-            visit_keywords = ["ghar", "home", "visit", "bhej", "collector", "pickup", "pick up", "address", "location", "dikkat", "call cut", "milne"]
+        elif p_disp == "WANTS_TO_RENEGOTIATE_LOAN_TERMS":
+            marathi_ptp_kws = ["pudhchya", "pudhcha", "deu shakto", "udya", "पुढच्या", "देऊ शकतो", "उद्या", "करतो", "karel"]
+            if any(kw in lower_t for kw in marathi_ptp_kws):
+                result["payment_disposition"] = "PTP"
+                result["reason_for_not_paying"] = "OTHER_REASONS"
+            else:
+                result["payment_disposition"] = p_disp
+        elif p_disp == "WILL_PAY_AFTER_VISIT" or any(kw in lower_t for kw in ["വീട്ടിലേക്ക്", "വീട്ടിൽ", "வீட்டிற்கு", "இல்லத்திற்கு", "మనెగె", "ఇంటికి", "ghar pe aao", "home visit", "collector"]):
+            # Safety Heuristic: Ensure visit keywords are present or mapped
+            visit_keywords = ["ghar", "home", "visit", "bhej", "collector", "pickup", "pick up", "address", "location", "dikkat", "call cut", "milne", "വീട്ടിലേക്ക്", "വീട്ടിൽ", "வீட்டிற்கு", "ఇంటికి", "ಮನೆಗೆ"]
             lower_t = transcript.lower()
-            if not any(kw in lower_t for kw in visit_keywords):
+            if any(kw in lower_t for kw in visit_keywords):
+                result["payment_disposition"] = "WILL_PAY_AFTER_VISIT"
+            else:
                 # If it's a commitment with date/amount but no visit keyword, it's likely a PTP
                 # We check for presence of amt/date in the raw result before cleanup
                 ptp_candidate = result.get("ptp_details", {})
@@ -191,8 +217,15 @@ Transcript: {transcript}
 
         # 2. Reason Mapping (Fuzzy)
         reason = str(result.get("reason_for_not_paying", "None")).upper().replace(" ", "_")
-        if "JOB" in reason and ("LOSS" in reason or "REH GAYA" in reason): 
+        medical_keywords = ["medical", "hospital", "doctor", "health", "bimari", "ilaj", "accident", "emergency", "operation", "treat", "ആശുപത്രി", "അസുഖം", "மருத்துவம்", "వైద్యం", "ಆಸ್ಪತ್ರೆ"]
+        job_keywords = ["work", "job", "வேலை", "ఉద్యోగం", "ಕೆಲಸ", "ജോലി", "unemployed", "nauki", "kaam", "business"]
+        
+        if any(kw in lower_t for kw in job_keywords) and ("loss" in lower_t or "poyi" in lower_t or "vela" in lower_t or "hogide" in lower_t or "poyindi" in lower_t or "nahi" in lower_t):
+             result["reason_for_not_paying"] = "JOB_CHANGED_WAITING_FOR_SALARY"
+        elif "JOB" in reason: 
             result["reason_for_not_paying"] = "JOB_CHANGED_WAITING_FOR_SALARY"
+        elif "MEDICAL" in reason or any(kw in lower_t for kw in medical_keywords):
+            result["reason_for_not_paying"] = "MEDICAL_ISSUE"
 
         # 3. PTP Details Rescue & Validation
         ptp = result.get("ptp_details", {})
