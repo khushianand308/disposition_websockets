@@ -44,9 +44,13 @@ python3 app.py
 # Option B: Background (Recommended for manual server use)
 nohup venv/bin/python3 app.py > api_ws.log 2>&1 &
 
-# ----- STOP -----
-# Kill the process running on port 8005
+# ----- STOP & FREE GPU -----
+# 1. Try to kill the web process gracefully:
 sudo fuser -k 8005/tcp
+
+# 2. Force-kill zombie python processes to free GPU VRAM (if nvidia-smi shows remaining processes):
+sudo pkill -9 -f "python3 app.py"
+# Alternatively, find the PID in nvidia-smi and run: sudo kill -9 <PID>
 
 # ----- RESTART -----
 # Kill and then start in background
