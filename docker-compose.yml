@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  disposition_api:
+    build: .
+    container_name: disposition_api
+    ports:
+      - "8005:8005"
+    volumes:
+      # Mount a local HuggingFace cache directory so downloading the 15GB model 
+      # doesn't happen every time the container restarts
+      - ./hf_cache:/root/.cache/huggingface
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    restart: always
